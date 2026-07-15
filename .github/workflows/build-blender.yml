@@ -1,0 +1,28 @@
+name: Build Blender
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-latest
+
+    steps:
+      - name: Download Blender source
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          brew install cmake ninja python
+
+      - name: Update libraries
+        run: |
+          make update
+
+      - name: Configure build
+        run: |
+          make release
+
+      - name: Build
+        run: |
+          make
