@@ -1,0 +1,74 @@
+name: Build Blender iPad IPA
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          brew update
+          brew install cmake ninja python
+
+      - name: Update Blender libraries
+        run: |
+          make update
+
+      - name: Generate iOS project
+        run: |
+          make ios
+
+      - name: Find Xcode project
+        run: |
+          find . -name "*.xcodeproj"
+          find . -name "*.xcworkspace"
+
+      - name: Build Archive
+        run: |
+          xcodebuild \
+            -project build_ios/blender.xcodeproj \
+            -scheme INSTALL \
+            -configuration Release \
+            -destination "generic/platform=iOS" \
+            -archivePath build_ios/Blender.xcarchive \
+            archive \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO
+
+      - name: Create ExportOptions.plist
+        run: |
+          cat > ExportOptions.plist <<EOF
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+          "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+              <key>method</key>
+              <string>development</string>
+              <key>signingStyle</key>
+              <string>manual</string>
+          </dict>
+          </plist>
+          EOF
+
+      - name: Export IPA
+        run: |
+          mkdir output
+          xcodebuild \
+            -exportArchive \
+            -archivePath build_ios/Blender.xcarchive \
+            -exportOptionsPlist ExportOptions.plist \
+            -exportPath output \
+            CODE_SIGNING_ALLOWED=NO
+
+      - name: Upload IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: Blender-iPad-IPA
+          path: output
